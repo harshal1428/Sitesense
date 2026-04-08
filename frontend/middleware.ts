@@ -3,7 +3,9 @@ import { NextResponse, type NextRequest } from "next/server"
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
-    request,
+    request: {
+      headers: request.headers,
+    },
   })
 
   const supabase = createServerClient(
@@ -18,7 +20,11 @@ export async function middleware(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           )
-          supabaseResponse = NextResponse.next({ request })
+          supabaseResponse = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
+          })
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           )
@@ -27,23 +33,20 @@ export async function middleware(request: NextRequest) {
     }
   )
 
+  // IMPORTANT: Do not remove this. Refreshing the session is necessary for Server Components.
   const { data: { user } } = await supabase.auth.getUser()
 
   // Protect dashboard routes
   if (request.nextUrl.pathname.startsWith("/dashboard")) {
     if (!user) {
-      return NextResponse.redirect(
-        new URL("/login", request.url)
-      )
+      return NextResponse.redirect(new URL("/login", request.url))
     }
   }
 
   // Redirect logged-in users away from login
   if (request.nextUrl.pathname === "/login") {
     if (user) {
-      return NextResponse.redirect(
-        new URL("/dashboard", request.url)
-      )
+      return NextResponse.redirect(new URL("/dashboard", request.url))
     }
   }
 
@@ -53,6 +56,7 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     "/dashboard/:path*",
-    "/login"
-  ]
+    "/login",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"
+  ],
 }
