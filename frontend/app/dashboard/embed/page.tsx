@@ -31,10 +31,12 @@ export default function EmbedPage() {
   const [copied, setCopied] = React.useState(false)
 
   const origin = widgetOrigin()
+  const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") || ""
   const snippet = activeTenant
     ? `<script
   src="${origin}/widget.js"
   data-bot-id="${activeTenant.bot_id}"
+  data-api="${apiBase}"
   data-primary-color="${activeTenant.primary_color}">
 </script>`
     : ""
