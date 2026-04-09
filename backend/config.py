@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     # LLM Providers
     ANTHROPIC_API_KEY: str = ""
     GEMINI_API_KEY: str = ""
+    OPENAI_API_KEY: str = ""
 
     # Default provider settings
     DEFAULT_LLM_PROVIDER: str = "claude"

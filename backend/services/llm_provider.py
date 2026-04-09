@@ -22,6 +22,7 @@ GEMINI_VARIANTS = [
 class LLMProvider(str, Enum):
     CLAUDE = "claude"
     GEMINI = "gemini"
+    OPENAI = "openai"
 
 AVAILABLE_MODELS = {
     "claude": [
@@ -30,9 +31,13 @@ AVAILABLE_MODELS = {
         "claude-3-haiku-20240307"
     ],
     "gemini": [
-        "gemini-2.0-flash",
         "gemini-1.5-flash",
+        "gemini-2.0-flash",
         "gemini-1.5-pro"
+    ],
+    "openai": [
+        "gpt-4o",
+        "gpt-4o-mini"
     ]
 }
 
@@ -48,34 +53,21 @@ async def get_provider_api_key(provider: str, user_id: str) -> str:
     """
     key = None
     
-    # 1. Try environment variables first if it's a system-level check
-    if user_id == "system":
-        if provider == LLMProvider.GEMINI:
-            key = settings.GEMINI_API_KEY
-        elif provider == LLMProvider.CLAUDE:
-            key = settings.ANTHROPIC_API_KEY
-            
-    # 2. Try Database if env var is missing or it's a specific user
-    if not key and user_id != "system":
-        try:
-            from database import db_session # Hypothetical import for DB key check
-            # For now, we fallback to env if user_id is not found in DB
-            pass
-        except Exception:
-            pass
-
-    # 3. Final Fallback to env
-    if not key:
-        if provider == LLMProvider.GEMINI:
-            key = settings.GEMINI_API_KEY
-        elif provider == LLMProvider.CLAUDE:
-            key = settings.ANTHROPIC_API_KEY
+    # Map provider to setting name
+    setting_map = {
+        LLMProvider.GEMINI: "GEMINI_API_KEY",
+        LLMProvider.CLAUDE: "ANTHROPIC_API_KEY",
+        LLMProvider.OPENAI: "OPENAI_API_KEY"
+    }
+    
+    setting_name = setting_map.get(provider)
+    if setting_name:
+        key = getattr(settings, setting_name, None)
 
     if not key:
         raise ValueError(
             f"No API key configured for provider: {provider}. "
-            f"Add it in Settings or set {provider.upper()}_API_KEY "
-            f"environment variable."
+            f"Please set your {provider.upper()}_API_KEY in Railway environment variables."
         )
     return key
 
@@ -92,49 +84,64 @@ async def generate_structured_response(
     Generates structured response from any LLM provider.
     Returns: (parsed_dict, tokens_used)
     
-    CRITICAL: Includes an automatic cross-provider fallback if the primary fails.
+    CRITICAL: Includes a triple-provider failover (Primary -> Secondary -> Last Resort)
     """
-    primary_provider = provider
-    primary_model = model
-    
+    # 1. Try Primary Provider (from Bot Settings)
     try:
-        api_key = await get_provider_api_key(primary_provider, user_id)
-        if primary_provider == LLMProvider.CLAUDE:
-            return await _call_claude(
-                system_prompt, user_prompt, api_key, primary_model, response_schema, context
-            )
-        else:
-            return await _call_gemini(
-                system_prompt, user_prompt, api_key, primary_model, response_schema, context
-            )
+        api_key = await get_provider_api_key(provider, user_id)
+        return await _call_provider(provider, model, system_prompt, user_prompt, api_key, response_schema, context)
     except Exception as e:
-        log.warning(f"Primary provider {primary_provider} failed: {str(e)}. Attempting cross-provider fallback...")
+        log.warning(f"Primary provider {provider} failed: {str(e)}. Attempting first fallback...")
         
-        # Determine fallback provider
-        fallback_provider = LLMProvider.CLAUDE if primary_provider == LLMProvider.GEMINI else LLMProvider.GEMINI
-        
-        # Use default model for fallback provider
-        fallback_model = (
-            "claude-3-5-haiku-20241022" 
-            if fallback_provider == LLMProvider.CLAUDE 
-            else "gemini-1.5-flash"
-        )
-        
-        try:
-            fallback_key = await get_provider_api_key(fallback_provider, user_id)
-            log.info(f"Retrying with fallback provider: {fallback_provider} ({fallback_model})")
+        # 2. Try Secondary Provider
+        fallback_order = [LLMProvider.CLAUDE, LLMProvider.GEMINI, LLMProvider.OPENAI]
+        if provider in fallback_order:
+            fallback_order.remove(provider)
             
-            if fallback_provider == LLMProvider.CLAUDE:
-                return await _call_claude(
-                    system_prompt, user_prompt, fallback_key, fallback_model, response_schema, context
-                )
-            else:
-                return await _call_gemini(
-                    system_prompt, user_prompt, fallback_key, fallback_model, response_schema, context
-                )
-        except Exception as fe:
-            log.error(f"Fallback provider {fallback_provider} also failed: {str(fe)}")
-            raise e # Raise the original error if both fail
+        for fallback_provider in fallback_order:
+            try:
+                fallback_key = await get_provider_api_key(fallback_provider, user_id)
+                fallback_model = AVAILABLE_MODELS[fallback_provider][0]
+                log.info(f"Retrying with fallback provider: {fallback_provider} ({fallback_model})")
+                return await _call_provider(fallback_provider, fallback_model, system_prompt, user_prompt, fallback_key, response_schema, context)
+            except Exception as fe:
+                log.error(f"Fallback {fallback_provider} also failed: {str(fe)}")
+        
+        # If we got here, everything failed
+        raise e
+
+async def _call_provider(provider, model, system, user, key, schema, context):
+    if provider == LLMProvider.CLAUDE:
+        return await _call_claude(system, user, key, model, schema, context)
+    elif provider == LLMProvider.GEMINI:
+        return await _call_gemini(system, user, key, model, schema, context)
+    elif provider == LLMProvider.OPENAI:
+        return await _call_openai(system, user, key, model, schema, context)
+    else:
+        raise ValueError(f"Unknown provider: {provider}")
+
+async def _call_openai(system, user, key, model, schema, context):
+    from openai import AsyncOpenAI
+    client = AsyncOpenAI(api_key=key)
+    
+    full_sys = f"{system}\n\nCONTEXT:\n{context}"
+    
+    resp = await client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": full_sys},
+            {"role": "user", "content": user}
+        ],
+        response_format={"type": "json_object"}
+    )
+    
+    content = resp.choices[0].message.content
+    result = json.loads(content)
+    tokens = resp.usage.total_tokens
+    return result, tokens
+
+# (Existing Claude/Gemini calls stay below, but I will fix Gemini name)
+
 
 async def validate_provider(provider: str, user_id: str) -> None:
     """Perform a dummy check to verify the provider API key and model access."""
@@ -207,12 +214,11 @@ async def _call_claude(
 
 def _normalize_gemini_name(name: str) -> str:
     """
-    Clean Gemini model names. 
-    The SDK handles prefixing; manually forcing 'models/' can cause 404s.
+    Ensure Gemini model names have 'models/' prefix.
     """
     name = name.lower().strip()
-    if name.startswith("models/"):
-        return name.replace("models/", "")
+    if not name.startswith("models/"):
+        return f"models/{name}"
     return name
 
 async def _call_gemini(
