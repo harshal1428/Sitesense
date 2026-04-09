@@ -21,7 +21,7 @@ httpx
 supabase==2.9.0
 
 # LLM Providers (cloud APIs)
-anthropic>=0.30.0
+anthropic>=0.28.0,<0.29.0
 google-generativeai>=0.8.3
 
 # LlamaIndex LLM integrations
