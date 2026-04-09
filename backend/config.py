@@ -19,7 +19,7 @@ class Settings(BaseSettings):
 
     # Default provider settings
     DEFAULT_LLM_PROVIDER: str = "claude"
-    DEFAULT_LLM_MODEL: str = "claude-haiku-4-5-20251001"
+    DEFAULT_LLM_MODEL: str = "claude-3-5-haiku-20241022"
 
     # Embeddings
     VOYAGE_API_KEY: str = ""
