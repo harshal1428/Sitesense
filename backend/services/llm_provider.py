@@ -265,17 +265,11 @@ async def _call_gemini(
     model_path = _normalize_gemini_name(model)
     
     # Map deprecated model names to current equivalents
-    _MODEL_MIGRATION = {
-        "gemini-1.5-flash": "gemini-2.0-flash",
-        "gemini-1.5-pro": "gemini-2.5-pro",
-        "gemini-1.0-pro": "gemini-2.0-flash",
-    }
-    if model_path in _MODEL_MIGRATION:
-        old_name = model_path
-        model_path = _MODEL_MIGRATION[model_path]
-        log.info(f"Migrated deprecated model '{old_name}' → '{model_path}'")
-    
     async def _try_gen(m_path: str):
+        # Standardize prefix for the SDK
+        if not m_path.startswith("models/"):
+            m_path = f"models/{m_path}"
+        
         # We try to use the model, but we wrap it in a function we can retry
         gemini_model = genai.GenerativeModel(
             model_name=m_path,
@@ -301,9 +295,9 @@ async def _call_gemini(
         log.warning(f"Gemini call failed for {model_path}: {err_msg}")
         
         # If we hit a quota limit, don't bother trying other models.
-        # They almost always share the same quota pool.
-        if "quota" in err_msg or "429" in err_msg or "limit" in err_msg:
-            log.info("Gemini quota reached. Skipping further auto-discovery for this provider.")
+        # However, we only do this if we've already tried a couple of models.
+        if ("quota" in err_msg or "429" in err_msg) and tried_discovery:
+            log.info("Multiple Gemini models hit quota. Skipping provider.")
             raise e
         
         # AUTO-DISCOVERY: If 404, try calling for the list of models the key actually supports
