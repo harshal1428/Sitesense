@@ -214,11 +214,12 @@ async def _call_claude(
 
 def _normalize_gemini_name(name: str) -> str:
     """
-    Ensure Gemini model names have 'models/' prefix.
+    Remove 'models/' prefix to let the SDK handle routing.
+    This resolves 404 issues seen in some regions using the v1beta endpoint.
     """
     name = name.lower().strip()
-    if not name.startswith("models/"):
-        return f"models/{name}"
+    if name.startswith("models/"):
+        return name.replace("models/", "")
     return name
 
 async def _call_gemini(
@@ -247,7 +248,8 @@ async def _call_gemini(
     model_path = _normalize_gemini_name(model)
     
     async def _try_gen(m_path: str):
-        # We use the raw name as the SDK handles the v1/v1beta/models mapping
+        # The library handles the v1/v1beta/models mapping
+        # but we try multiple path formats to be safe
         gemini_model = genai.GenerativeModel(
             model_name=m_path,
             system_instruction=full_system,
@@ -271,10 +273,19 @@ async def _call_gemini(
         err_msg = str(e).lower()
         log.error(f"Gemini call failed for {model_path}: {err_msg}")
         
+        # If 404, try the alternative prefix format immediately
+        if "404" in err_msg or "not found" in err_msg:
+            alt_path = f"models/{model_path}" if not model_path.startswith("models/") else model_path.replace("models/", "")
+            try:
+                log.info(f"Retrying Gemini with alternative path format: {alt_path}")
+                return await _try_gen(alt_path)
+            except Exception as ae:
+                log.error(f"Alternative path {alt_path} also failed: {str(ae)}")
+
         # Try universal fallbacks based on verified available models
         fallbacks = [
-            "gemini-2.0-flash", 
             "gemini-1.5-flash",
+            "gemini-2.0-flash", 
             "gemini-1.5-pro"
         ]
         for fb in fallbacks:
