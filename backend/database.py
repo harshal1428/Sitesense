@@ -85,8 +85,8 @@ async def create_tenant(
     primary_color: str = "#2563eb",
     system_prompt: str = "",
     allowed_origins: list[str] | None = None,
-    llm_provider: str = "claude",
-    llm_model: str = "claude-3-5-sonnet-20241022",
+    llm_provider: str = "gemini",
+    llm_model: str = "gemini-2.0-flash",
     suggested_questions: list[str] | None = None,
 ) -> dict:
     """Create a new tenant in Supabase."""

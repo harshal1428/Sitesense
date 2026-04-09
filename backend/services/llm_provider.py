@@ -13,10 +13,10 @@ log = logging.getLogger("sitesense.llm")
 
 # Valid model names for Gemini (including 2.x family)
 GEMINI_VARIANTS = [
-    "gemini-2.0-flash", 
-    "gemini-2.0-flash-lite-preview-02-05", # Latest Lite
-    "gemini-1.5-flash",
-    "gemini-1.5-pro"
+    "gemini-2.0-flash",
+    "gemini-2.5-flash",
+    "gemini-2.5-pro",
+    "gemini-2.0-flash-lite",
 ]
 
 class LLMProvider(str, Enum):
@@ -31,9 +31,9 @@ AVAILABLE_MODELS = {
         "claude-3-haiku-20240307"
     ],
     "gemini": [
-        "gemini-1.5-flash",
         "gemini-2.0-flash",
-        "gemini-1.5-pro"
+        "gemini-2.5-flash",
+        "gemini-2.5-pro",
     ],
     "openai": [
         "gpt-4o",
@@ -86,6 +86,18 @@ async def generate_structured_response(
     
     CRITICAL: Includes a triple-provider failover (Primary -> Secondary -> Last Resort)
     """
+    # 0. Migrate deprecated model names (tenant DB may have stale values)
+    _DEPRECATED_MODELS = {
+        "gemini-1.5-flash": "gemini-2.0-flash",
+        "gemini-1.5-pro": "gemini-2.5-pro",
+        "gemini-1.0-pro": "gemini-2.0-flash",
+        "claude-haiku-4-5-20251001": "claude-3-5-haiku-20241022",
+    }
+    if model in _DEPRECATED_MODELS:
+        new_model = _DEPRECATED_MODELS[model]
+        log.info(f"Migrating deprecated model '{model}' → '{new_model}'")
+        model = new_model
+
     # 1. Try Primary Provider (from Bot Settings)
     try:
         api_key = await get_provider_api_key(provider, user_id)
@@ -94,7 +106,8 @@ async def generate_structured_response(
         log.warning(f"Primary provider {provider} failed: {str(e)}. Attempting first fallback...")
         
         # 2. Try Secondary Provider
-        fallback_order = [LLMProvider.CLAUDE, LLMProvider.GEMINI, LLMProvider.OPENAI]
+        # Prefer Gemini first (most likely to have a working key), then Claude, then OpenAI
+        fallback_order = [LLMProvider.GEMINI, LLMProvider.CLAUDE, LLMProvider.OPENAI]
         if provider in fallback_order:
             fallback_order.remove(provider)
             
@@ -247,6 +260,17 @@ async def _call_gemini(
     # Attempt with cleaned name
     model_path = _normalize_gemini_name(model)
     
+    # Map deprecated model names to current equivalents
+    _MODEL_MIGRATION = {
+        "gemini-1.5-flash": "gemini-2.0-flash",
+        "gemini-1.5-pro": "gemini-2.5-pro",
+        "gemini-1.0-pro": "gemini-2.0-flash",
+    }
+    if model_path in _MODEL_MIGRATION:
+        old_name = model_path
+        model_path = _MODEL_MIGRATION[model_path]
+        log.info(f"Migrated deprecated model '{old_name}' → '{model_path}'")
+    
     async def _try_gen(m_path: str):
         # We try to use the model, but we wrap it in a function we can retry
         gemini_model = genai.GenerativeModel(
@@ -280,18 +304,21 @@ async def _call_gemini(
             
             if available_names:
                 # Try the first few available models that aren't the one we just failed with
-                for disco_model in available_names[:3]:
-                    if disco_model != model_path:
+                for disco_model in available_names[:5]:
+                    # Normalize discovered name for comparison (strip 'models/' prefix)
+                    disco_normalized = _normalize_gemini_name(disco_model)
+                    if disco_normalized != model_path:
                         try:
-                            log.info(f"Auto-discovered and retrying with: {disco_model}")
-                            return await _try_gen(disco_model)
-                        except Exception:
+                            log.info(f"Auto-discovered and retrying with: {disco_normalized}")
+                            return await _try_gen(disco_normalized)
+                        except Exception as retry_err:
+                            log.warning(f"Auto-discovered model {disco_normalized} also failed: {retry_err}")
                             continue
         except Exception as disco_err:
             log.error(f"Auto-discovery failed: {str(disco_err)}")
 
-        # Fallback to hardcoded list if discovery failed
-        fallbacks = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.0-pro"]
+        # Fallback to hardcoded list if discovery failed (current models only)
+        fallbacks = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-2.5-pro"]
         for fb in fallbacks:
             fb_path = _normalize_gemini_name(fb)
             if fb_path != model_path:

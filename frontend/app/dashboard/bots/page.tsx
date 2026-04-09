@@ -69,12 +69,13 @@ const PROVIDER_OPTIONS = [
 
 const MODEL_OPTIONS: Record<string, { label: string; value: string }[]> = {
   claude: [
-    { label: "Claude 4.5 Haiku", value: "claude-haiku-4-5-20251001" },
-    { label: "Claude 4.6 Sonnet", value: "claude-sonnet-4-6" },
+    { label: "Claude 3.5 Sonnet", value: "claude-3-5-sonnet-20241022" },
+    { label: "Claude 3.5 Haiku", value: "claude-3-5-haiku-20241022" },
   ],
   gemini: [
-    { label: "Gemini 1.5 Flash", value: "gemini-1.5-flash" },
-    { label: "Gemini 1.5 Pro", value: "gemini-1.5-pro" },
+    { label: "Gemini 2.0 Flash", value: "gemini-2.0-flash" },
+    { label: "Gemini 2.5 Flash", value: "gemini-2.5-flash" },
+    { label: "Gemini 2.5 Pro", value: "gemini-2.5-pro" },
   ],
 }
 
@@ -329,8 +330,8 @@ function TenantDialog({
       fallback_message: "I don't have information on that topic.",
       primary_color: "#2563eb",
       system_prompt: "",
-      llm_provider: "claude",
-      llm_model: "claude-haiku-4-5-20251001",
+      llm_provider: "gemini",
+      llm_model: "gemini-2.0-flash",
       suggested_questions: ["", "", ""],
       allowed_origins: [""],
     },
@@ -355,8 +356,8 @@ function TenantDialog({
         fallback_message: tenant.fallback_message ?? "",
         primary_color: tenant.primary_color ?? "#2563eb",
         system_prompt: tenant.system_prompt ?? "",
-        llm_provider: tenant.llm_provider ?? "claude",
-        llm_model: tenant.llm_model ?? "claude-haiku-4-5-20251001",
+        llm_provider: tenant.llm_provider ?? "gemini",
+        llm_model: tenant.llm_model ?? "gemini-2.0-flash",
         suggested_questions: normalizeStringList(tenant.suggested_questions ?? [], SUGGESTED_MIN),
         allowed_origins: tenant.allowed_origins?.length ? tenant.allowed_origins : [""],
       })
@@ -369,8 +370,8 @@ function TenantDialog({
         fallback_message: "I don't have information on that topic.",
         primary_color: "#2563eb",
         system_prompt: "",
-        llm_provider: "claude",
-        llm_model: "claude-haiku-4-5-20251001",
+        llm_provider: "gemini",
+        llm_model: "gemini-2.0-flash",
         suggested_questions: ["", "", ""],
         allowed_origins: [""],
       })

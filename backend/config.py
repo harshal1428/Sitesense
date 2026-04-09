@@ -19,12 +19,11 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
 
     # Default provider settings
-    DEFAULT_LLM_PROVIDER: str = "claude"
-    DEFAULT_LLM_MODEL: str = "claude-3-5-haiku-20241022"
+    DEFAULT_LLM_PROVIDER: str = "gemini"
+    DEFAULT_LLM_MODEL: str = "gemini-2.0-flash"
 
     # Embeddings
     VOYAGE_API_KEY: str = ""
-    OPENAI_API_KEY: str = ""
     DEFAULT_EMBED_MODEL: str = "voyage-02"
 
     # Widget Security
