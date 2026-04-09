@@ -137,52 +137,29 @@ async def run_rag_pipeline(
         # =============================================================
         # STAGE 1 — Embed the query
         # =============================================================
-        query_embedding = await get_query_embedding(query)
+        try:
+            query_embedding = await get_query_embedding(query)
+        except Exception as e:
+            logger.error(f"STAGE 1 FAILED (Embeddings): {str(e)}")
+            raise
 
         # =============================================================
         # STAGE 2 — Vector search in ChromaDB
         # =============================================================
-        results = await query_collection(
-            bot_id=bot_id,
-            query_embedding=query_embedding,
-            n_results=10,
-        )
+        try:
+            results = await query_collection(
+                bot_id=bot_id,
+                query_embedding=query_embedding,
+                n_results=10,
+            )
+        except Exception as e:
+            logger.error(f"STAGE 2 FAILED (ChromaDB): {str(e)}")
+            raise
 
         raw_chunks: list[str] = results["documents"][0] if results["documents"] else []
         raw_metadata: list[dict] = results["metadatas"][0] if results["metadatas"] else []
 
         print(f"--- Retrieved {len(raw_chunks)} raw chunks for bot {bot_id} ---")
-        for i, (chunk, meta) in enumerate(zip(raw_chunks[:2], raw_metadata[:2])):
-            print(f"  [{i}] Context check: {chunk[:60]}... From {meta.get('url', 'unknown')}")
-
-        # =============================================================
-        # STAGE 3 — Rerank with FlashRank (Simplified for stability)
-        # =============================================================
-        # ranker = get_ranker()
-
-        # passages: list[dict[str, Any]] = [
-        #     {"id": idx, "text": chunk, "meta": meta}
-        #     for idx, (chunk, meta) in enumerate(zip(raw_chunks, raw_metadata))
-        # ]
-
-        # rerank_request = RerankRequest(query=query, passages=passages)
-        # reranked = ranker.rerank(rerank_request)
-
-        # # Take top 3
-        # top_results = reranked[:3]
-
-        # # Check relevance threshold
-        # best_score = top_results[0].get("score", 0) if top_results else 0
-        # if best_score < 0.05:
-        #     logger.info(
-        #         "Best rerank score %.4f below threshold for bot_id=%s",
-        #         best_score,
-        #         bot_id,
-        #     )
-        #     return _build_fallback(tenant_config)
-
-        # # Determine confidence from best score
-        # confidence = _score_to_confidence(best_score)
         
         # Simple top 5 from vector search
         top_results = []
@@ -195,8 +172,6 @@ async def run_rag_pipeline(
         # =============================================================
         # STAGE 4 — Build prompt
         # =============================================================
-
-        # -- Context block --
         context_blocks: list[str] = []
         top_metadatas: list[dict] = []
 
@@ -212,18 +187,10 @@ async def run_rag_pipeline(
 
         context = "\n\n---\n\n".join(context_blocks)
         unique_sources = _deduplicate_sources(top_metadatas)
-
-        # -- Conversation history (last 5 turns) --
         history_text = _format_history(chat_history, max_turns=5)
 
-        # -- System prompt --
         custom_prompt = tenant_config.get("system_prompt", "")
         bot_name = tenant_config.get("bot_name", "AI Assistant")
-        fallback_msg = tenant_config.get(
-            "fallback_message",
-            "I don't have information on that topic.",
-        )
-
         system_prompt = (
             f"You are {bot_name}, a highly helpful and professional AI assistant.\n\n"
             "INSTRUCTIONS:\n"
@@ -235,7 +202,6 @@ async def run_rag_pipeline(
         if custom_prompt:
             system_prompt += f"\n[User Custom Instructions]: {custom_prompt}\n"
 
-        # -- User message --
         user_message = ""
         if context:
             user_message += f"RELEVANT CONTEXT:\n{context}\n\n"
@@ -249,14 +215,13 @@ async def run_rag_pipeline(
             f"USER QUESTION: {query}\n\n"
             "Please provide a structured response based on the above."
         )
-        print(f"--- System Prompt ---\n{system_prompt}")
-        print(f"--- User Message ---\n{user_message}")
 
         # =============================================================
         # STAGE 5 — Generate output with Multi-Provider LLM
         # =============================================================
         provider = tenant_config.get("llm_provider", settings.DEFAULT_LLM_PROVIDER)
         model = tenant_config.get("llm_model", settings.DEFAULT_LLM_MODEL)
+        
         try:
             result_dict, tokens = await generate_structured_response(
                 system_prompt=system_prompt,
@@ -268,8 +233,7 @@ async def run_rag_pipeline(
                 context=context
             )
         except Exception as e:
-            logger.error(f"Chat generation failed in RAG pipeline: {str(e)}")
-            # Return a friendly fallback instead of 500 error
+            logger.error(f"STAGE 5 FAILED (LLM Generation - {provider}/{model}): {str(e)}")
             return ChatbotResponse(
                 answer="I'm sorry, our AI brain is temporarily over capacity. Please try again in a few moments.",
                 sources=unique_sources,
@@ -277,34 +241,17 @@ async def run_rag_pipeline(
                 tokens_used=0
             ), 0
 
-        try:
-            chat_response = ChatbotResponse(**result_dict)
-            chat_response.tokens_used = tokens
-        except Exception as e:
-            logger.error(f"Failed to parse LLM response into ChatbotResponse: {str(e)}")
-            return ChatbotResponse(
-                answer="The AI returned an invalid response. Please try again.",
-                sources=unique_sources,
-                confidence="low",
-                tokens_used=0
-            ), 0
-
-        # Override sources with the actual retrieved source names
+        chat_response = ChatbotResponse(**result_dict)
+        chat_response.tokens_used = tokens
+        
         if chat_response.was_answered:
             chat_response.sources = unique_sources
-
-        # Override confidence with reranker-derived value (if implemented)
         chat_response.confidence = confidence
 
         return chat_response, tokens
 
     except Exception as exc:
-        logger.error(
-            "RAG pipeline error for bot_id=%s: %s",
-            bot_id,
-            exc,
-            exc_info=True,
-        )
+        logger.error(f"RAG PIPELINE FATAL ERROR: {str(exc)}", exc_info=True)
         return _build_fallback(tenant_config), 0
 
 
