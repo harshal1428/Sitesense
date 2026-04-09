@@ -296,8 +296,10 @@ async def _call_gemini(
             available_names = [m.name for m in models if "generateContent" in m.supported_generation_methods]
             
             if available_names:
-                # Try the first few available models that aren't the one we just failed with
-                for disco_model in available_names[:5]:
+                # Sort models to prioritize 2.5 and 2.0+ (newest first)
+                available_names.sort(reverse=True)
+                
+                for disco_model in available_names[:8]:
                     # Normalize discovered name for comparison (strip 'models/' prefix)
                     disco_normalized = _normalize_gemini_name(disco_model)
                     if disco_normalized != model_path:
