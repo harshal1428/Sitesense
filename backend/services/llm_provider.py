@@ -113,12 +113,16 @@ async def generate_structured_response(
             
         for fallback_provider in fallback_order:
             try:
+                # CRITICAL optimization: If we hit a quota limit (429) or billing error (400 balance)
+                # don't bother retrying other models on the same provider if the logic does that.
+                # Just move to the NEXT provider in the chain.
                 fallback_key = await get_provider_api_key(fallback_provider, user_id)
                 fallback_model = AVAILABLE_MODELS[fallback_provider][0]
                 log.info(f"Retrying with fallback provider: {fallback_provider} ({fallback_model})")
                 return await _call_provider(fallback_provider, fallback_model, system_prompt, user_prompt, fallback_key, response_schema, context)
             except Exception as fe:
                 log.error(f"Fallback {fallback_provider} also failed: {str(fe)}")
+                continue
         
         # If we got here, everything failed
         raise e
@@ -296,7 +300,13 @@ async def _call_gemini(
         err_msg = str(e).lower()
         log.warning(f"Gemini call failed for {model_path}: {err_msg}")
         
-        # AUTO-DISCOVERY: If 404 or 429, try calling for the list of models the key actually supports
+        # If we hit a quota limit, don't bother trying other models.
+        # They almost always share the same quota pool.
+        if "quota" in err_msg or "429" in err_msg or "limit" in err_msg:
+            log.info("Gemini quota reached. Skipping further auto-discovery for this provider.")
+            raise e
+        
+        # AUTO-DISCOVERY: If 404, try calling for the list of models the key actually supports
         try:
             log.info("Attempting auto-discovery of available Gemini models...")
             models = await asyncio.to_thread(genai.list_models)
