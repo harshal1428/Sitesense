@@ -86,18 +86,6 @@ async def generate_structured_response(
     
     CRITICAL: Includes a triple-provider failover (Primary -> Secondary -> Last Resort)
     """
-    # 0. Migrate deprecated model names (tenant DB may have stale values)
-    _DEPRECATED_MODELS = {
-        "gemini-1.5-flash": "gemini-2.0-flash",
-        "gemini-1.5-pro": "gemini-2.5-pro",
-        "gemini-1.0-pro": "gemini-2.0-flash",
-        "claude-haiku-4-5-20251001": "claude-3-5-haiku-20241022",
-    }
-    if model in _DEPRECATED_MODELS:
-        new_model = _DEPRECATED_MODELS[model]
-        log.info(f"Migrating deprecated model '{model}' → '{new_model}'")
-        model = new_model
-
     # 1. Try Primary Provider (from Bot Settings)
     try:
         api_key = await get_provider_api_key(provider, user_id)
@@ -249,6 +237,7 @@ async def _call_gemini(
 ) -> tuple[dict, int]:
     genai.configure(api_key=api_key)
     schema = response_schema.model_json_schema()
+    tried_discovery = False
     
     full_system = (
         f"{system_prompt}\n\n"
