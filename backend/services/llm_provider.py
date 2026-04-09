@@ -248,8 +248,7 @@ async def _call_gemini(
     model_path = _normalize_gemini_name(model)
     
     async def _try_gen(m_path: str):
-        # The library handles the v1/v1beta/models mapping
-        # but we try multiple path formats to be safe
+        # We try to use the model, but we wrap it in a function we can retry
         gemini_model = genai.GenerativeModel(
             model_name=m_path,
             system_instruction=full_system,
@@ -271,28 +270,34 @@ async def _call_gemini(
         return await _try_gen(model_path)
     except Exception as e:
         err_msg = str(e).lower()
-        log.error(f"Gemini call failed for {model_path}: {err_msg}")
+        log.warning(f"Gemini call failed for {model_path}: {err_msg}")
         
-        # If 404, try the alternative prefix format immediately
-        if "404" in err_msg or "not found" in err_msg:
-            alt_path = f"models/{model_path}" if not model_path.startswith("models/") else model_path.replace("models/", "")
-            try:
-                log.info(f"Retrying Gemini with alternative path format: {alt_path}")
-                return await _try_gen(alt_path)
-            except Exception as ae:
-                log.error(f"Alternative path {alt_path} also failed: {str(ae)}")
+        # AUTO-DISCOVERY: If 404 or 429, try calling for the list of models the key actually supports
+        try:
+            log.info("Attempting auto-discovery of available Gemini models...")
+            models = await asyncio.to_thread(genai.list_models)
+            available_names = [m.name for m in models if "generateContent" in m.supported_generation_methods]
+            
+            if available_names:
+                # Try the first few available models that aren't the one we just failed with
+                for disco_model in available_names[:3]:
+                    if disco_model != model_path:
+                        try:
+                            log.info(f"Auto-discovered and retrying with: {disco_model}")
+                            return await _try_gen(disco_model)
+                        except Exception:
+                            continue
+        except Exception as disco_err:
+            log.error(f"Auto-discovery failed: {str(disco_err)}")
 
-        # Try universal fallbacks based on verified available models
-        fallbacks = [
-            "gemini-1.5-flash",
-            "gemini-2.0-flash", 
-            "gemini-1.5-pro"
-        ]
+        # Fallback to hardcoded list if discovery failed
+        fallbacks = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.0-pro"]
         for fb in fallbacks:
-            if fb != model_path:
+            fb_path = _normalize_gemini_name(fb)
+            if fb_path != model_path:
                 try:
-                    log.info(f"Retrying with fallback: {fb}")
-                    return await _try_gen(fb)
-                except Exception as fe:
-                    log.error(f"Fallback {fb} also failed: {str(fe)}")
+                    log.info(f"Retrying with safety fallback: {fb_path}")
+                    return await _try_gen(fb_path)
+                except Exception:
+                    continue
         raise
