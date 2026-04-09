@@ -91,19 +91,50 @@ async def generate_structured_response(
     """
     Generates structured response from any LLM provider.
     Returns: (parsed_dict, tokens_used)
-    """
-    api_key = await get_provider_api_key(provider, user_id)
     
-    if provider == LLMProvider.CLAUDE:
-        return await _call_claude(
-            system_prompt, user_prompt, api_key, model, response_schema, context
+    CRITICAL: Includes an automatic cross-provider fallback if the primary fails.
+    """
+    primary_provider = provider
+    primary_model = model
+    
+    try:
+        api_key = await get_provider_api_key(primary_provider, user_id)
+        if primary_provider == LLMProvider.CLAUDE:
+            return await _call_claude(
+                system_prompt, user_prompt, api_key, primary_model, response_schema, context
+            )
+        else:
+            return await _call_gemini(
+                system_prompt, user_prompt, api_key, primary_model, response_schema, context
+            )
+    except Exception as e:
+        log.warning(f"Primary provider {primary_provider} failed: {str(e)}. Attempting cross-provider fallback...")
+        
+        # Determine fallback provider
+        fallback_provider = LLMProvider.CLAUDE if primary_provider == LLMProvider.GEMINI else LLMProvider.GEMINI
+        
+        # Use default model for fallback provider
+        fallback_model = (
+            "claude-3-5-haiku-20241022" 
+            if fallback_provider == LLMProvider.CLAUDE 
+            else "gemini-1.5-flash"
         )
-    elif provider == LLMProvider.GEMINI:
-        return await _call_gemini(
-            system_prompt, user_prompt, api_key, model, response_schema, context
-        )
-    else:
-        raise ValueError(f"Unknown provider: {provider}")
+        
+        try:
+            fallback_key = await get_provider_api_key(fallback_provider, user_id)
+            log.info(f"Retrying with fallback provider: {fallback_provider} ({fallback_model})")
+            
+            if fallback_provider == LLMProvider.CLAUDE:
+                return await _call_claude(
+                    system_prompt, user_prompt, fallback_key, fallback_model, response_schema, context
+                )
+            else:
+                return await _call_gemini(
+                    system_prompt, user_prompt, fallback_key, fallback_model, response_schema, context
+                )
+        except Exception as fe:
+            log.error(f"Fallback provider {fallback_provider} also failed: {str(fe)}")
+            raise e # Raise the original error if both fail
 
 async def validate_provider(provider: str, user_id: str) -> None:
     """Perform a dummy check to verify the provider API key and model access."""
