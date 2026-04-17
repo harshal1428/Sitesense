@@ -77,18 +77,16 @@
       position: fixed; bottom: 90px; ${POSITION}: 20px;
       width: 380px; height: 580px;
       border-radius: var(--radius);
-      background: rgba(15, 23, 42, 0.95); 
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      color: #f8fafc;
+      background: #ffffff; 
+      color: #1e293b;
       display: flex; flex-direction: column;
-      box-shadow: 0 20px 50px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.1);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.15);
       z-index: 2147483646;
       opacity: 0; transform: translateY(16px);
       pointer-events: none;
       transition: opacity .4s cubic-bezier(0.23, 1, 0.32, 1), transform .4s cubic-bezier(0.23, 1, 0.32, 1);
       overflow: hidden;
-      border: 1px solid rgba(255,255,255,0.1);
+      border: 1px solid rgba(0,0,0,0.05);
     }
     .ss-window.open { opacity: 1; transform: translateY(0); pointer-events: auto; }
 
@@ -100,19 +98,18 @@
       color: #fff;
       border-radius: var(--radius) var(--radius) 0 0;
       flex-shrink: 0;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
     }
     .ss-avatar {
       width: 40px; height: 40px; border-radius: 12px;
-      background: rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.15);
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0; font-size: 20px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
     .ss-header-info { flex: 1; min-width: 0; }
     .ss-header-name { font-weight: 800; font-size: 16px; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .ss-header-status { font-size: 11px; opacity: .8; display: flex; align-items: center; gap: 4px; margin-top: 2px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
-    .ss-header-status .dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; display: inline-block; box-shadow: 0 0 10px #22c55e; }
+    .ss-header-status { font-size: 11px; opacity: .85; display: flex; align-items: center; gap: 4px; margin-top: 2px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+    .ss-header-status .dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; display: inline-block; box-shadow: 0 0 10px rgba(34, 197, 94, 0.5); }
     .ss-close-btn {
       background: rgba(255,255,255,0.1); border: none; color: #fff; cursor: pointer;
       width: 32px; height: 32px; border-radius: 10px;
@@ -127,11 +124,11 @@
       flex: 1; overflow-y: auto; padding: 20px 16px;
       display: flex; flex-direction: column; gap: 12px;
       scroll-behavior: smooth;
-      background: transparent;
+      background: #ffffff;
     }
-    .ss-messages::-webkit-scrollbar { width: 4px; }
+    .ss-messages::-webkit-scrollbar { width: 5px; }
     .ss-messages::-webkit-scrollbar-track { background: transparent; }
-    .ss-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+    .ss-messages::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
 
     /* ---------- Message rows ---------- */
     .ss-msg-row { display: flex; gap: 10px; max-width: 88%; animation: ssSlideUp .4s cubic-bezier(0.23, 1, 0.32, 1); }
@@ -142,26 +139,24 @@
       background: linear-gradient(135deg, var(--c), #6366f1); color: #fff;
       display: flex; align-items: center; justify-content: center;
       font-size: 14px; font-weight: 700; margin-top: 2px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     }
     .ss-msg-row.user .ss-msg-avatar { display: none; }
 
     .ss-msg-bubble {
       padding: 12px 16px; border-radius: 18px; font-size: 14px; line-height: 1.6;
       word-break: break-word; position: relative;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
     .ss-msg-row.bot .ss-msg-bubble { 
-      background: rgba(255,255,255,0.05); 
-      color: #e2e8f0; 
+      background: #f1f5f9; 
+      color: #1e293b; 
       border-bottom-left-radius: 4px; 
-      border: 1px solid rgba(255,255,255,0.05);
     }
     .ss-msg-row.user .ss-msg-bubble { 
       background: var(--c); 
       color: #fff; 
       border-bottom-right-radius: 4px; 
-      box-shadow: 0 8px 20px -6px rgba(139, 92, 246, 0.3);
+      box-shadow: 0 4px 12px -2px rgba(139, 92, 246, 0.2);
     }
 
     .ss-msg-bubble ul { margin: 4px 0 4px 16px; padding: 0; }
@@ -206,16 +201,16 @@
     /* ---------- Skeleton / Thinking indicator ---------- */
     .ss-skeleton { 
       display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; 
-      width: 200px; background: rgba(255,255,255,0.03); border-radius: 18px;
-      border: 1px solid rgba(255,255,255,0.05);
+      width: 200px; background: #f8fafc; border-radius: 18px;
+      border: 1px solid #e2e8f0;
     }
     .ss-skeleton-bar {
-      height: 10px; background: rgba(255,255,255,0.05); border-radius: 5px;
+      height: 10px; background: #e2e8f0; border-radius: 5px;
       position: relative; overflow: hidden;
     }
     .ss-skeleton-bar::after {
       content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
       animation: ssPulse 1.8s infinite cubic-bezier(0.4, 0, 0.6, 1);
     }
     .ss-skeleton-bar:nth-child(2) { width: 85%; }
@@ -241,29 +236,29 @@
     /* ---------- Input area ---------- */
     .ss-input-area {
       display: flex; align-items: flex-end; gap: 8px;
-      padding: 16px; border-top: 1px solid rgba(255,255,255,0.05);
-      background: transparent; flex-shrink: 0;
+      padding: 16px; border-top: 1px solid #f1f5f9;
+      background: #ffffff; flex-shrink: 0;
     }
     .ss-input {
-      flex: 1; resize: none; border: 1px solid rgba(255,255,255,0.1); border-radius: 14px;
+      flex: 1; resize: none; border: 1px solid #e2e8f0; border-radius: 14px;
       padding: 12px 16px; font-size: 14px; font-family: inherit;
       line-height: 1.5; outline: none; min-height: 44px; max-height: 100px;
-      color: #fff; background: rgba(255,255,255,0.05);
+      color: #1e293b; background: #f8fafc;
       transition: all .2s;
     }
-    .ss-input::placeholder { color: rgba(255,255,255,0.3); }
-    .ss-input:focus { border-color: var(--c); background: rgba(255,255,255,0.08); box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1); }
+    .ss-input::placeholder { color: #94a3b8; }
+    .ss-input:focus { border-color: var(--c); background: #ffffff; box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.05); }
     .ss-send-btn, .ss-mic-btn {
       width: 40px; height: 40px; border-radius: 12px; border: none;
       display: flex; align-items: center; justify-content: center;
       cursor: pointer; flex-shrink: 0; transition: all .2s;
     }
     .ss-send-btn { background: var(--c); color: #fff; opacity: .4; }
-    .ss-send-btn.active { opacity: 1; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3); }
+    .ss-send-btn.active { opacity: 1; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2); }
     .ss-send-btn:hover.active { transform: scale(1.05); }
     .ss-send-btn svg, .ss-mic-btn svg { width: 20px; height: 20px; }
-    .ss-mic-btn { background: rgba(255,255,255,0.05); color: #94a3b8; }
-    .ss-mic-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+    .ss-mic-btn { background: #f8fafc; color: #94a3b8; }
+    .ss-mic-btn:hover { background: #f1f5f9; color: #1e293b; }
 
     /* ---------- Footer ---------- */
     .ss-footer {
