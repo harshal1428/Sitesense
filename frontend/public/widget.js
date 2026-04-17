@@ -75,74 +75,94 @@
     /* ---------- Window ---------- */
     .ss-window {
       position: fixed; bottom: 90px; ${POSITION}: 20px;
-      width: 370px; height: 560px;
+      width: 380px; height: 580px;
       border-radius: var(--radius);
-      background: #fff; color: #1e293b;
+      background: rgba(15, 23, 42, 0.95); 
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      color: #f8fafc;
       display: flex; flex-direction: column;
-      box-shadow: 0 10px 40px rgba(0,0,0,.18);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.1);
       z-index: 2147483646;
       opacity: 0; transform: translateY(16px);
       pointer-events: none;
-      transition: opacity .3s cubic-bezier(.4,0,.2,1), transform .3s cubic-bezier(.4,0,.2,1);
+      transition: opacity .4s cubic-bezier(0.23, 1, 0.32, 1), transform .4s cubic-bezier(0.23, 1, 0.32, 1);
       overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.1);
     }
     .ss-window.open { opacity: 1; transform: translateY(0); pointer-events: auto; }
 
     /* ---------- Header ---------- */
     .ss-header {
-      display: flex; align-items: center; gap: 10px;
-      padding: 14px 16px;
-      background: var(--c); color: #fff;
+      display: flex; align-items: center; gap: 12px;
+      padding: 18px 20px;
+      background: linear-gradient(135deg, var(--c), #1e293b); 
+      color: #fff;
       border-radius: var(--radius) var(--radius) 0 0;
       flex-shrink: 0;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
     }
     .ss-avatar {
-      width: 38px; height: 38px; border-radius: 50%;
-      background: rgba(255,255,255,.2);
+      width: 40px; height: 40px; border-radius: 12px;
+      background: rgba(255,255,255,0.1);
       display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0; font-size: 18px;
+      flex-shrink: 0; font-size: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     }
     .ss-header-info { flex: 1; min-width: 0; }
-    .ss-header-name { font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .ss-header-status { font-size: 11px; opacity: .85; display: flex; align-items: center; gap: 4px; margin-top: 1px; }
-    .ss-header-status .dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; display: inline-block; }
+    .ss-header-name { font-weight: 800; font-size: 16px; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ss-header-status { font-size: 11px; opacity: .8; display: flex; align-items: center; gap: 4px; margin-top: 2px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+    .ss-header-status .dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; display: inline-block; box-shadow: 0 0 10px #22c55e; }
     .ss-close-btn {
-      background: none; border: none; color: #fff; cursor: pointer;
-      width: 32px; height: 32px; border-radius: 50%;
+      background: rgba(255,255,255,0.1); border: none; color: #fff; cursor: pointer;
+      width: 32px; height: 32px; border-radius: 10px;
       display: flex; align-items: center; justify-content: center;
-      transition: background .15s;
+      transition: all .2s;
     }
-    .ss-close-btn:hover { background: rgba(255,255,255,.15); }
+    .ss-close-btn:hover { background: rgba(255,255,255,0.2); transform: scale(1.05); }
     .ss-close-btn svg { width: 18px; height: 18px; }
 
     /* ---------- Messages area ---------- */
     .ss-messages {
-      flex: 1; overflow-y: auto; padding: 16px 14px;
-      display: flex; flex-direction: column; gap: 6px;
+      flex: 1; overflow-y: auto; padding: 20px 16px;
+      display: flex; flex-direction: column; gap: 12px;
       scroll-behavior: smooth;
+      background: transparent;
     }
-    .ss-messages::-webkit-scrollbar { width: 5px; }
+    .ss-messages::-webkit-scrollbar { width: 4px; }
     .ss-messages::-webkit-scrollbar-track { background: transparent; }
-    .ss-messages::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .ss-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
 
     /* ---------- Message rows ---------- */
-    .ss-msg-row { display: flex; gap: 8px; max-width: 92%; animation: ssSlideIn .3s ease; }
+    .ss-msg-row { display: flex; gap: 10px; max-width: 88%; animation: ssSlideUp .4s cubic-bezier(0.23, 1, 0.32, 1); }
     .ss-msg-row.bot { align-self: flex-start; }
     .ss-msg-row.user { align-self: flex-end; flex-direction: row-reverse; }
     .ss-msg-avatar {
-      width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
-      background: var(--c); color: #fff;
+      width: 30px; height: 30px; border-radius: 10px; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--c), #6366f1); color: #fff;
       display: flex; align-items: center; justify-content: center;
-      font-size: 12px; font-weight: 700; margin-top: 2px;
+      font-size: 14px; font-weight: 700; margin-top: 2px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
     }
     .ss-msg-row.user .ss-msg-avatar { display: none; }
 
     .ss-msg-bubble {
-      padding: 10px 14px; border-radius: 14px; font-size: 13.5px; line-height: 1.55;
+      padding: 12px 16px; border-radius: 18px; font-size: 14px; line-height: 1.6;
       word-break: break-word; position: relative;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
-    .ss-msg-row.bot .ss-msg-bubble { background: #f1f5f9; color: #1e293b; border-bottom-left-radius: 4px; }
-    .ss-msg-row.user .ss-msg-bubble { background: var(--c); color: #fff; border-bottom-right-radius: 4px; }
+    .ss-msg-row.bot .ss-msg-bubble { 
+      background: rgba(255,255,255,0.05); 
+      color: #e2e8f0; 
+      border-bottom-left-radius: 4px; 
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    .ss-msg-row.user .ss-msg-bubble { 
+      background: var(--c); 
+      color: #fff; 
+      border-bottom-right-radius: 4px; 
+      box-shadow: 0 8px 20px -6px rgba(139, 92, 246, 0.3);
+    }
 
     .ss-msg-bubble ul { margin: 4px 0 4px 16px; padding: 0; }
     .ss-msg-bubble li { margin: 2px 0; }
@@ -183,14 +203,29 @@
     }
     .ss-handoff button:hover { opacity: .88; }
 
-    /* ---------- Typing indicator ---------- */
-    .ss-typing { display: flex; gap: 4px; padding: 10px 14px; }
-    .ss-typing span {
-      width: 7px; height: 7px; border-radius: 50%; background: #94a3b8;
-      animation: ssBounce 1.2s infinite;
+    /* ---------- Skeleton / Thinking indicator ---------- */
+    .ss-skeleton { 
+      display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; 
+      width: 200px; background: rgba(255,255,255,0.03); border-radius: 18px;
+      border: 1px solid rgba(255,255,255,0.05);
     }
-    .ss-typing span:nth-child(2) { animation-delay: .15s; }
-    .ss-typing span:nth-child(3) { animation-delay: .3s; }
+    .ss-skeleton-bar {
+      height: 10px; background: rgba(255,255,255,0.05); border-radius: 5px;
+      position: relative; overflow: hidden;
+    }
+    .ss-skeleton-bar::after {
+      content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+      animation: ssPulse 1.8s infinite cubic-bezier(0.4, 0, 0.6, 1);
+    }
+    .ss-skeleton-bar:nth-child(2) { width: 85%; }
+    .ss-skeleton-bar:nth-child(3) { width: 60%; }
+
+    @keyframes ssPulse {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+    @keyframes ssSlideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 
     /* ---------- Privacy notice ---------- */
     .ss-privacy {
@@ -205,31 +240,30 @@
 
     /* ---------- Input area ---------- */
     .ss-input-area {
-      display: flex; align-items: flex-end; gap: 6px;
-      padding: 10px 12px; border-top: 1px solid #f1f5f9;
-      background: #fff; flex-shrink: 0;
-      border-radius: 0 0 var(--radius) var(--radius);
+      display: flex; align-items: flex-end; gap: 8px;
+      padding: 16px; border-top: 1px solid rgba(255,255,255,0.05);
+      background: transparent; flex-shrink: 0;
     }
     .ss-input {
-      flex: 1; resize: none; border: 1px solid #e2e8f0; border-radius: 12px;
-      padding: 9px 12px; font-size: 13.5px; font-family: inherit;
-      line-height: 1.4; outline: none; min-height: 38px; max-height: 80px;
-      color: #1e293b; background: #f8fafc;
-      transition: border-color .15s;
+      flex: 1; resize: none; border: 1px solid rgba(255,255,255,0.1); border-radius: 14px;
+      padding: 12px 16px; font-size: 14px; font-family: inherit;
+      line-height: 1.5; outline: none; min-height: 44px; max-height: 100px;
+      color: #fff; background: rgba(255,255,255,0.05);
+      transition: all .2s;
     }
-    .ss-input::placeholder { color: #94a3b8; }
-    .ss-input:focus { border-color: var(--c); background: #fff; }
+    .ss-input::placeholder { color: rgba(255,255,255,0.3); }
+    .ss-input:focus { border-color: var(--c); background: rgba(255,255,255,0.08); box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1); }
     .ss-send-btn, .ss-mic-btn {
-      width: 36px; height: 36px; border-radius: 50%; border: none;
+      width: 40px; height: 40px; border-radius: 12px; border: none;
       display: flex; align-items: center; justify-content: center;
-      cursor: pointer; flex-shrink: 0; transition: opacity .15s, background .15s;
+      cursor: pointer; flex-shrink: 0; transition: all .2s;
     }
-    .ss-send-btn { background: var(--c); color: #fff; opacity: .45; }
-    .ss-send-btn.active { opacity: 1; }
-    .ss-send-btn:hover.active { opacity: .88; }
-    .ss-send-btn svg, .ss-mic-btn svg { width: 18px; height: 18px; }
-    .ss-mic-btn { background: transparent; color: #94a3b8; }
-    .ss-mic-btn:hover { background: #f1f5f9; }
+    .ss-send-btn { background: var(--c); color: #fff; opacity: .4; }
+    .ss-send-btn.active { opacity: 1; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3); }
+    .ss-send-btn:hover.active { transform: scale(1.05); }
+    .ss-send-btn svg, .ss-mic-btn svg { width: 20px; height: 20px; }
+    .ss-mic-btn { background: rgba(255,255,255,0.05); color: #94a3b8; }
+    .ss-mic-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
 
     /* ---------- Footer ---------- */
     .ss-footer {
@@ -548,7 +582,11 @@
     row.className = "ss-msg-row bot";
     row.innerHTML = `
       <div class="ss-msg-avatar">${ICON_BOT}</div>
-      <div class="ss-typing"><span></span><span></span><span></span></div>`;
+      <div class="ss-skeleton">
+        <div class="ss-skeleton-bar"></div>
+        <div class="ss-skeleton-bar"></div>
+        <div class="ss-skeleton-bar"></div>
+      </div>`;
     messagesEl.appendChild(row);
     scrollToBottom();
     return row;
