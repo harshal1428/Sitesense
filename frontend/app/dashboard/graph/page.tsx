@@ -19,7 +19,7 @@ export default function KnowledgeGraphPage() {
   const [generating, setGenerating] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   // Store ref to the graph instance for zooming
-  const fgRef = React.useRef<any>()
+  const fgRef = React.useRef<any>(null)
 
   const fetchGraph = React.useCallback(async () => {
     if (!activeTenant) return
@@ -128,13 +128,32 @@ export default function KnowledgeGraphPage() {
     node.__bckgDimensions = bckgDimensions; 
   }, []);
 
-  const pointerArea = React.useCallback((node: any, x: number, y: number) => {
+  const pointerArea = React.useCallback((node: any, color: string, ctx: CanvasRenderingContext2D) => {
       const bckgDimensions = node.__bckgDimensions;
-      if (!bckgDimensions) return false;
+      if (!bckgDimensions) return;
       const bckgW = bckgDimensions[0];
       const bckgH = bckgDimensions[1];
-      return x >= node.x - bckgW / 2 && x <= node.x + bckgW / 2 &&
-             y >= node.y - bckgH / 2 && y <= node.y + bckgH / 2;
+      
+      ctx.fillStyle = color;
+      
+      const radius = bckgH / 2;
+      const x = node.x - bckgW / 2;
+      const y = node.y - bckgH / 2;
+      const w = bckgW;
+      const h = bckgH;
+
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + w - radius, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+      ctx.lineTo(x + w, y + h - radius);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+      ctx.lineTo(x + radius, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+      ctx.fill();
   }, []);
 
   if (!activeTenant) {
