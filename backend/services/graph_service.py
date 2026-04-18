@@ -10,9 +10,18 @@ import base64
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 
+from pydantic import BaseModel, Field
 from config import settings
-from services.llm_provider import call_llm
+from services.llm_provider import generate_structured_response
 from services.chroma import get_collection_count, get_all_chunks
+
+class Triplet(BaseModel):
+    subject: str = Field(..., description="Concise subject of the relationship")
+    relation: str = Field(..., description="Active relationship between subject and object")
+    object: str = Field(..., description="Concise object of the relationship")
+
+class TripletList(BaseModel):
+    triplets: List[Triplet]
 
 logger = logging.getLogger(__name__)
 
@@ -51,49 +60,38 @@ class GraphService:
         """
         prompt = f"""
         Extract the key entities and their relationships from the following text as a list of triplets.
-        Format: [Subject] -- [Relation] -- [Object]
-        
-        Guidelines:
-        - Keep entities (Subject/Object) concise (1-3 words).
-        - Use clear, active relations (e.g., "is a", "manages", "located in", "belongs to").
-        - Only extract clear, factual relationships.
-        - Return ONLY the list of triplets, one per line.
-        
         Text:
         {text[:2000]} 
         """
         
         try:
-            # We use a dummy system prompt for triplet extraction
-            response = await call_llm(
-                provider="gemini", # Defaulting to gemini for speed/extraction
+            # We use gemini for fast/cheap extraction with a structured schema
+            result_dict, _ = await generate_structured_response(
+                system_prompt="You are a Knowledge Graph extraction engine. Extract Subject-Relation-Object triplets from the text.",
+                user_prompt=prompt,
+                provider="gemini",
                 model="gemini-2.0-flash",
-                system_prompt="You are a Knowledge Graph extraction engine. Output ONLY triplets in the requested format.",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.1
+                user_id="system",
+                response_schema=TripletList
             )
             
-            content = response.get("answer", "")
-            lines = content.strip().split("\n")
-            triplets = []
+            extracted_triplets = result_dict.get("triplets", [])
+            db_triplets = []
             
-            for line in lines:
-                if "--" in line:
-                    parts = line.split("--")
-                    if len(parts) == 3:
-                        s, r, o = [p.strip() for p in parts]
-                        if s and r and o:
-                            triplets.append((bot_id, source_id, s, r, o))
+            for t in extracted_triplets:
+                s, r, o = t.get("subject"), t.get("relation"), t.get("object")
+                if s and r and o:
+                    db_triplets.append((bot_id, source_id, s, r, o))
             
-            if triplets:
+            if db_triplets:
                 with sqlite3.connect(self.db_path) as conn:
                     cursor = conn.cursor()
                     cursor.executemany(
                         "INSERT INTO triplets (bot_id, source_id, subject, relation, object) VALUES (?, ?, ?, ?, ?)",
-                        triplets
+                        db_triplets
                     )
                     conn.commit()
-                return len(triplets)
+                return len(db_triplets)
             
             return 0
         except Exception as e:
