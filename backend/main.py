@@ -40,6 +40,7 @@ from routers.chat import router as chat_router
 from routers.widget import router as widget_router
 from routers.analytics import router as analytics_router
 from routers.settings import router as settings_router
+from routers.graph import router as graph_router
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -173,6 +174,7 @@ app.include_router(chat_router)
 app.include_router(widget_router)
 app.include_router(analytics_router)
 app.include_router(settings_router)
+app.include_router(graph_router)
 
 
 # ---------------------------------------------------------------------------

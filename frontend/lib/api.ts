@@ -319,3 +319,18 @@ export async function getAvailableModels(): Promise<ModelsDict> {
   return apiFetch<ModelsDict>("/api/settings/models");
 }
 
+// Knowledge Graph
+export async function getGraphVisualize(botId: string): Promise<{ status: string; image?: string }> {
+  return apiFetch<{ status: string; image?: string }>(`/graph/${encodeURIComponent(botId)}/visualize`);
+}
+
+export async function rebuildGraph(botId: string): Promise<{ status: string; message: string }> {
+  return apiFetch<{ status: string; message: string }>(`/graph/${encodeURIComponent(botId)}/rebuild`, {
+    method: "POST",
+  });
+}
+
+export async function getGraphData(botId: string): Promise<any> {
+  return apiFetch<any>(`/graph/${encodeURIComponent(botId)}`);
+}
+

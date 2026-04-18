@@ -167,3 +167,28 @@ async def delete_source_chunks(
         return True
     except Exception:
         return False
+
+
+async def get_all_chunks(bot_id: str) -> list[dict]:
+    """Retrieve all chunks for a specific bot from ChromaDB."""
+    client = get_chroma_client()
+    collection_name = get_collection_name(bot_id)
+    try:
+        collection = client.get_collection(name=collection_name)
+        results = collection.get(
+            include=["documents", "metadatas"]
+        )
+        
+        chunks = []
+        docs = results.get("documents", [])
+        metas = results.get("metadatas", [])
+        
+        for i in range(len(docs)):
+            chunks.append({
+                "document": docs[i],
+                "metadata": metas[i] if i < len(metas) else {}
+            })
+        return chunks
+    except Exception as e:
+        logger.error(f"Error fetching all chunks for {bot_id}: {e}")
+        return []

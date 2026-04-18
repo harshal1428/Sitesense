@@ -16,12 +16,13 @@ import { useTenantContext } from "@/lib/tenant-context"
 
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser"
 import { Button } from "@/components/ui/button"
-import { BarChart3, Bot, BookText, Code2, LogOut, Settings } from "lucide-react"
+import { BarChart3, Bot, BookText, Code2, LogOut, Settings, Share2, Network } from "lucide-react"
 
 const navItems = [
   { label: "🤖 Bots", href: "/dashboard/bots", icon: Bot },
   { label: "📄 Sources", href: "/dashboard/sources", icon: BookText },
   { label: "📊 Analytics", href: "/dashboard/analytics", icon: BarChart3 },
+  { label: "🕸️ Network Map", href: "/dashboard/graph", icon: Network },
   { label: "🔗 Embed", href: "/dashboard/embed", icon: Code2 },
   { label: "⚙️ Settings", href: "/dashboard/settings", icon: Settings },
 ] as const
