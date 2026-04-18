@@ -40,3 +40,5 @@ slowapi==0.1.9
 pandas
 openpyxl
 aiofiles
+networkx
+matplotlib
