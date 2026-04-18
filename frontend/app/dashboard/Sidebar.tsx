@@ -16,7 +16,17 @@ import { useTenantContext } from "@/lib/tenant-context"
 
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser"
 import { Button } from "@/components/ui/button"
-import { BarChart3, Bot, BookText, Code2, LogOut, Settings, Share2, Network } from "lucide-react"
+import { 
+  BarChart3, 
+  Bot, 
+  BookText, 
+  Code2, 
+  LogOut, 
+  Settings, 
+  Network, 
+  PanelLeftClose, 
+  PanelLeftOpen 
+} from "lucide-react"
 
 const navItems = [
   { label: "🤖 Bots", href: "/dashboard/bots", icon: Bot },
@@ -29,7 +39,12 @@ const navItems = [
 
 const NONE_VALUE = "__none__"
 
-export function DashboardSidebar() {
+interface SidebarProps {
+  isCollapsed: boolean
+  onToggle: () => void
+}
+
+export function DashboardSidebar({ isCollapsed, onToggle }: SidebarProps) {
   const router = useRouter()
   const pathname = usePathname()
   const { tenants, activeTenant, setActiveTenant } = useTenantContext()
@@ -43,20 +58,33 @@ export function DashboardSidebar() {
   }
 
   return (
-    <aside className="flex w-72 shrink-0 flex-col glass border-r border-white/5 px-4 py-8 relative z-20">
-      <div className="mb-8 flex items-center gap-4 px-3">
-        <div className="size-10 rounded-xl bg-gradient-to-br from-brand-purple to-brand-blue flex items-center justify-center shadow-[0_0_20px_-5px_rgba(139,92,246,0.6)]">
-          <Bot className="text-white size-6" />
+    <aside className={cn(
+      "flex shrink-0 flex-col glass border-r border-white/5 py-8 relative z-20 transition-all duration-300 ease-in-out",
+      isCollapsed ? "w-20 px-2" : "w-72 px-4"
+    )}>
+      <div className={cn(
+        "mb-8 flex items-center gap-4 px-3 relative",
+        isCollapsed ? "justify-center" : "justify-between"
+      )}>
+        <div className="flex items-center gap-4">
+          <div className="size-10 rounded-xl bg-gradient-to-br from-brand-purple to-brand-blue flex items-center justify-center shadow-[0_0_20px_-5px_rgba(139,92,246,0.6)] shrink-0">
+            <Bot className="text-white size-6" />
+          </div>
+          {!isCollapsed && (
+            <Link href="/dashboard/bots" className="text-xl font-bold font-heading tracking-tight text-gradient animate-in fade-in duration-300">
+              SiteSense
+            </Link>
+          )}
         </div>
-        <Link href="/dashboard/bots" className="text-xl font-bold font-heading tracking-tight text-gradient">
-          SiteSense
-        </Link>
       </div>
 
-      <div className="mb-10 px-2">
-        <div className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground uppercase mb-3 ml-1 opacity-50">
-          Intelligence Node
-        </div>
+      <div className="mb-10 px-2 space-y-4">
+        {!isCollapsed && (
+          <div className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground uppercase ml-1 opacity-50 animate-in fade-in duration-300">
+            Intelligence Node
+          </div>
+        )}
+        
         <Select
           value={selectValue}
           onValueChange={(value) => {
@@ -69,8 +97,15 @@ export function DashboardSidebar() {
             if (tenant) setActiveTenant(tenant)
           }}
         >
-          <SelectTrigger className="w-full bg-white/5 border-white/10 h-11 rounded-xl focus:ring-brand-purple/20">
-            <SelectValue placeholder="Select a bot" />
+          <SelectTrigger className={cn(
+            "w-full bg-white/5 border-white/10 h-11 rounded-xl focus:ring-brand-purple/20 transition-all",
+            isCollapsed ? "px-0 flex justify-center border-none bg-transparent" : "px-3"
+          )}>
+             {isCollapsed ? (
+               <Bot className="size-5 text-brand-purple" />
+             ) : (
+               <SelectValue placeholder="Select a bot" />
+             )}
           </SelectTrigger>
           <SelectContent className="glass-premium border-white/10 rounded-xl text-white">
             {tenants.length === 0 ? (
@@ -91,19 +126,21 @@ export function DashboardSidebar() {
           </SelectContent>
         </Select>
 
-        {activeTenant ? (
+        {activeTenant && !isCollapsed && (
           <div className="mt-3 px-1 animate-in fade-in slide-in-from-left-2 duration-500">
             <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
               <div className="h-full bg-brand-purple w-full shadow-[0_0_10px_rgba(139,92,246,0.5)]" />
             </div>
           </div>
-        ) : null}
+        )}
       </div>
 
       <nav className="flex flex-col gap-2 px-1">
-        <div className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground uppercase mb-2 ml-2 opacity-50">
-          Management
-        </div>
+        {!isCollapsed && (
+          <div className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground uppercase mb-2 ml-2 opacity-50 animate-in fade-in duration-300">
+            Management
+          </div>
+        )}
         {navItems.map((item) => {
           const Icon = item.icon
           const isActive =
@@ -116,14 +153,20 @@ export function DashboardSidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-300 group",
+                "flex items-center gap-3 rounded-xl py-3 text-sm font-medium transition-all duration-300 group",
+                isCollapsed ? "justify-center px-0 w-12 mx-auto" : "px-4 w-full",
                 isActive 
                   ? "bg-brand-purple/15 text-brand-purple border border-brand-purple/20 shadow-[0_0_20px_-10px_rgba(139,92,246,0.3)]" 
                   : "text-muted-foreground hover:bg-white/5 hover:text-white"
               )}
+              title={isCollapsed ? item.label.replace(/^[^\s]+\s+/, "") : undefined}
             >
-              <Icon className={cn("size-5", isActive ? "text-brand-purple" : "text-slate-400 group-hover:text-white transition-colors")} />
-              <span>{item.label.replace(/^[^\s]+\s+/, "")}</span>
+              <Icon className={cn("size-5 shrink-0", isActive ? "text-brand-purple" : "text-slate-400 group-hover:text-white transition-colors")} />
+              {!isCollapsed && (
+                <span className="animate-in fade-in slide-in-from-left-1 duration-300">
+                  {item.label.replace(/^[^\s]+\s+/, "")}
+                </span>
+              )}
             </Link>
           )
         })}
@@ -132,16 +175,30 @@ export function DashboardSidebar() {
       <div className="mt-auto px-2 pt-6 pb-2 space-y-4">
         <Button 
           variant="ghost" 
-          className="w-full justify-start text-muted-foreground hover:text-red-400 hover:bg-red-400/10 h-12 rounded-xl"
+          className={cn(
+            "w-full justify-start text-muted-foreground hover:text-red-400 hover:bg-red-400/10 h-12 rounded-xl transition-all",
+            isCollapsed ? "px-0 justify-center h-10 w-10 mx-auto" : "px-4"
+          )}
           onClick={handleSignOut}
+          title={isCollapsed ? "Sign Out" : undefined}
         >
-          <LogOut className="mr-3 h-4 w-4" />
-          <span className="font-heading">SIGN OUT</span>
+          <LogOut className={cn("h-4 w-4 shrink-0", !isCollapsed && "mr-3")} />
+          {!isCollapsed && <span className="font-heading">SIGN OUT</span>}
         </Button>
-        <div className="flex items-center justify-between px-2 text-[10px] font-bold tracking-widest text-muted-foreground opacity-30">
-          <span>SITESENSE AI</span>
-          <span>V2.0</span>
-        </div>
+        
+        {!isCollapsed && (
+          <div className="flex items-center justify-between px-2 text-[10px] font-bold tracking-widest text-muted-foreground opacity-30 animate-in fade-in duration-300">
+            <span>SITESENSE AI</span>
+            <span>V2.0</span>
+          </div>
+        )}
+
+        <button 
+          onClick={onToggle}
+          className="absolute -right-3 top-20 size-6 rounded-full bg-brand-purple flex items-center justify-center text-white shadow-lg border border-white/10 hover:scale-110 transition-transform z-30"
+        >
+          {isCollapsed ? <PanelLeftOpen className="size-3" /> : <PanelLeftClose className="size-3" />}
+        </button>
       </div>
     </aside>
   )
