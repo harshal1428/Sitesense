@@ -180,6 +180,16 @@ app.include_router(graph_router)
 # ---------------------------------------------------------------------------
 # System Endpoints
 # ---------------------------------------------------------------------------
+@app.get("/", tags=["system"])
+async def root():
+    """Root redirect / welcome message to prevent 404 logs."""
+    return {"status": "ok", "message": "SiteSense AI Backend API is running"}
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    """Prevent 404 logs for browser favicon requests."""
+    return {}
+
 @app.get("/health", tags=["system"])
 async def health_check():
     """Lightweight liveness probe."""
