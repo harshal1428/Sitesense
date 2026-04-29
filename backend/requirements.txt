@@ -7,8 +7,7 @@ pydantic
 pydantic-settings
 python-dotenv
 llama-index
-llama-index-vector-stores-chroma
-chromadb
+pinecone-client>=6.0.0
 pymupdf
 crawl4ai
 playwright

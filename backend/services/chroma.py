@@ -1,84 +1,90 @@
 """
-SiteSense AI — ChromaDB Service (Embedded Stability Edition)
+SiteSense AI — Vector DB Service (Pinecone Edition)
 
-This version uses an embedded PersistentClient to avoid Windows 
-networking/firewall issues that block local HTTP connections.
+This version replaces ChromaDB with Pinecone Serverless to support
+Render deployments without needing persistent local storage disks.
+Note: The file is kept as 'chroma.py' to prevent breaking imports across the app.
 """
 
 from __future__ import annotations
-import chromadb
+import logging
+from pinecone import Pinecone
 from config import settings
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Module-level client — lazy-initialised
 # ---------------------------------------------------------------------------
-_client: chromadb.PersistentClient | None = None
+_pc_client: Pinecone | None = None
+_index = None
 
-
-def get_chroma_client() -> chromadb.PersistentClient:
+def get_pinecone_index():
     """
-    Return a reusable persistent client connected directly to the
-    local data directory. No network overhead.
+    Return a reusable Pinecone index client.
     """
-    global _client
-    if _client is None:
-        _client = chromadb.PersistentClient(
-            path=settings.CHROMA_PERSIST_PATH
-        )
-    return _client
+    global _pc_client, _index
+    if _pc_client is None:
+        if not settings.PINECONE_API_KEY:
+            logger.error("PINECONE_API_KEY is missing! Vector operations will fail.")
+            
+        _pc_client = Pinecone(api_key=settings.PINECONE_API_KEY)
+        _index = _pc_client.Index(settings.PINECONE_INDEX_NAME)
+    return _index
 
 
 # ===================================================================
 #  HELPERS
 # ===================================================================
 
-def get_collection_name(bot_id: str) -> str:
+def get_namespace(bot_id: str) -> str:
+    """Pinecone uses namespaces instead of collections for tenant isolation."""
     return f"tenant_{bot_id.replace('-', '_')}"
 
 
 # ===================================================================
-#  COLLECTION LIFECYCLE
+#  COLLECTION / NAMESPACE LIFECYCLE
 # ===================================================================
 
 async def get_or_create_collection(bot_id: str):
-    client = get_chroma_client()
-    collection_name = get_collection_name(bot_id)
-
-    collection = client.get_or_create_collection(
-        name=collection_name,
-        metadata={
-            "hnsw:space": "cosine",
-            "tenant_bot_id": bot_id,
-        },
-    )
-    return collection
+    """
+    Compatibility wrapper. Pinecone creates namespaces implicitly 
+    on the first upsert, so we just return the index and namespace string.
+    """
+    index = get_pinecone_index()
+    return index
 
 
 async def collection_exists(bot_id: str) -> bool:
-    client = get_chroma_client()
-    collection_name = get_collection_name(bot_id)
+    """Check if the namespace has any vectors."""
     try:
-        client.get_collection(name=collection_name)
-        return True
+        index = get_pinecone_index()
+        stats = index.describe_index_stats()
+        ns = get_namespace(bot_id)
+        return ns in stats.get("namespaces", {})
     except Exception:
         return False
 
 
 async def get_collection_count(bot_id: str) -> int:
-    client = get_chroma_client()
-    collection_name = get_collection_name(bot_id)
+    """Return the vector count for a specific tenant namespace."""
     try:
-        collection = client.get_collection(name=collection_name)
-        return collection.count()
+        index = get_pinecone_index()
+        stats = index.describe_index_stats()
+        ns = get_namespace(bot_id)
+        if ns in stats.get("namespaces", {}):
+            return stats["namespaces"][ns]["vector_count"]
+        return 0
     except Exception:
         return 0
 
 
 async def delete_tenant_collection(bot_id: str) -> bool:
-    client = get_chroma_client()
-    collection_name = get_collection_name(bot_id)
+    """Delete all vectors in the tenant's namespace."""
     try:
-        client.delete_collection(name=collection_name)
+        index = get_pinecone_index()
+        ns = get_namespace(bot_id)
+        index.delete(delete_all=True, namespace=ns)
         return True
     except Exception:
         return False
@@ -95,22 +101,33 @@ async def add_chunks_to_collection(
     metadatas: list[dict],
     ids: list[str],
 ) -> int:
+    """Upsert vectors into Pinecone."""
     if not chunks:
         return 0
 
-    collection = await get_or_create_collection(bot_id)
-    batch_size = 5000
+    index = get_pinecone_index()
+    ns = get_namespace(bot_id)
+    
+    # Pinecone requires vectors in the format: {"id": "...", "values": [...], "metadata": {...}}
+    batch_size = 100  # Pinecone optimal batch size is usually smaller than Chroma
     added = 0
 
     for start in range(0, len(chunks), batch_size):
         end = start + batch_size
-        collection.add(
-            documents=chunks[start:end],
-            embeddings=embeddings[start:end],
-            metadatas=metadatas[start:end],
-            ids=ids[start:end],
-        )
-        added += len(chunks[start:end])
+        
+        vectors_to_upsert = []
+        for i in range(start, min(end, len(chunks))):
+            meta = metadatas[i].copy() if metadatas[i] else {}
+            meta["document"] = chunks[i]  # Pinecone doesn't have a separate document field
+            
+            vectors_to_upsert.append({
+                "id": ids[i],
+                "values": embeddings[i],
+                "metadata": meta
+            })
+            
+        index.upsert(vectors=vectors_to_upsert, namespace=ns)
+        added += len(vectors_to_upsert)
 
     return added
 
@@ -120,74 +137,115 @@ async def query_collection(
     query_embedding: list[float],
     n_results: int = 10,
 ) -> dict:
+    """Query Pinecone and format results to match the legacy ChromaDB output."""
     empty_result: dict = {
         "documents": [[]],
         "metadatas": [[]],
         "distances": [[]],
     }
 
-    client = get_chroma_client()
-    collection_name = get_collection_name(bot_id)
-
     try:
-        collection = client.get_collection(name=collection_name)
-    except Exception:
+        index = get_pinecone_index()
+        ns = get_namespace(bot_id)
+
+        # First verify the namespace exists and has vectors
+        stats = index.describe_index_stats()
+        if ns not in stats.get("namespaces", {}):
+            return empty_result
+            
+        count = stats["namespaces"][ns]["vector_count"]
+        if count == 0:
+            return empty_result
+
+        n_results = min(n_results, count)
+
+        response = index.query(
+            vector=query_embedding,
+            top_k=n_results,
+            include_metadata=True,
+            namespace=ns
+        )
+
+        documents = []
+        metas = []
+        distances = []
+
+        for match in response.get("matches", []):
+            metadata = match.get("metadata", {})
+            doc = metadata.pop("document", "")  # Extract the text
+            
+            documents.append(doc)
+            metas.append(metadata)
+            distances.append(match.get("score", 0.0)) # Pinecone returns similarity score (higher is better)
+
+        return {
+            "documents": [documents],
+            "metadatas": [metas],
+            "distances": [distances],
+        }
+
+    except Exception as e:
+        logger.error(f"Pinecone query error: {e}")
         return empty_result
-
-    count = collection.count()
-    if count == 0:
-        return empty_result
-
-    n_results = min(n_results, count)
-
-    results = collection.query(
-        query_embeddings=[query_embedding],
-        n_results=n_results,
-        include=["documents", "metadatas", "distances"],
-    )
-
-    return {
-        "documents": results.get("documents", [[]]),
-        "metadatas": results.get("metadatas", [[]]),
-        "distances": results.get("distances", [[]]),
-    }
 
 
 async def delete_source_chunks(
     bot_id: str,
     source_id: str,
 ) -> bool:
-    client = get_chroma_client()
-    collection_name = get_collection_name(bot_id)
+    """Delete chunks associated with a specific source_id."""
     try:
-        collection = client.get_collection(name=collection_name)
-        collection.delete(
-            where={"source_id": source_id},
+        index = get_pinecone_index()
+        ns = get_namespace(bot_id)
+        
+        # Pinecone allows deletion by metadata filter
+        index.delete(
+            filter={"source_id": {"$eq": source_id}},
+            namespace=ns
         )
         return True
-    except Exception:
+    except Exception as e:
+        logger.error(f"Pinecone delete_source_chunks error: {e}")
         return False
 
 
 async def get_all_chunks(bot_id: str) -> list[dict]:
-    """Retrieve all chunks for a specific bot from ChromaDB."""
-    client = get_chroma_client()
-    collection_name = get_collection_name(bot_id)
+    """
+    Retrieve all chunks for a specific bot from Pinecone.
+    Because Pinecone doesn't have a direct 'get all' without IDs, 
+    we query with a dummy zero-vector and a large top_k for 1024 dimensions.
+    """
     try:
-        collection = client.get_collection(name=collection_name)
-        results = collection.get(
-            include=["documents", "metadatas"]
+        index = get_pinecone_index()
+        ns = get_namespace(bot_id)
+        
+        stats = index.describe_index_stats()
+        if ns not in stats.get("namespaces", {}):
+            return []
+            
+        vector_count = stats["namespaces"][ns]["vector_count"]
+        if vector_count == 0:
+            return []
+            
+        # Voyage-02 is 1024 dimensions. Create a dummy zero vector.
+        dummy_vector = [0.0] * 1024
+        
+        response = index.query(
+            vector=dummy_vector,
+            top_k=min(vector_count, 10000), # Cap at 10000 limit
+            include_metadata=True,
+            namespace=ns
         )
         
         chunks = []
-        docs = results.get("documents", [])
-        metas = results.get("metadatas", [])
-        
-        for i in range(len(docs)):
+        for match in response.get("matches", []):
+            metadata = match.get("metadata", {})
+            doc = metadata.pop("document", "")
             chunks.append({
-                "document": docs[i],
-                "metadata": metas[i] if i < len(metas) else {}
+                "document": doc,
+                "metadata": metadata
             })
+            
         return chunks
     except Exception as e:
         logger.error(f"Error fetching all chunks for {bot_id}: {e}")

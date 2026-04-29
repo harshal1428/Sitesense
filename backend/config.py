@@ -37,7 +37,11 @@ class Settings(BaseSettings):
     # Environment
     ENVIRONMENT: str = "development"
 
-    # ChromaDB
+    # Vector Database
+    PINECONE_API_KEY: str = ""
+    PINECONE_INDEX_NAME: str = "sitesense-ai"
+
+    # ChromaDB (Legacy)
     CHROMA_HOST: str = "localhost"
     CHROMA_PORT: int = 8000
     CHROMA_PERSIST_PATH: str = "./data/chroma"
