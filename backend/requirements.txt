@@ -7,7 +7,7 @@ pydantic
 pydantic-settings
 python-dotenv
 llama-index
-pinecone-client>=6.0.0
+pinecone>=6.0.0
 pymupdf
 crawl4ai
 playwright
