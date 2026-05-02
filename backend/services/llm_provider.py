@@ -52,6 +52,8 @@ async def get_provider_api_key(provider: str, user_id: str) -> str:
     1. User-specific database key (if user_id is a UUID)
     2. Global environment variables (if user_id is 'system' or no DB key)
     """
+    key = None
+    
     # 1. Check database if user_id is provided
     if user_id and user_id != "system":
         key = await get_api_key(user_id, provider)
