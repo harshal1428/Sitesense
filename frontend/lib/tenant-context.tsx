@@ -45,6 +45,24 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       setTenants([])
       setActiveTenantState(null)
     })
+    
+    // Listen to Supabase auth state changes to clear/refresh tenants properly
+    const { createSupabaseBrowserClient } = require("@/lib/supabase-browser")
+    const supabase = createSupabaseBrowserClient()
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (event: string, session: any) => {
+        if (event === "SIGNED_OUT") {
+          setTenants([])
+          setActiveTenantState(null)
+        } else if (event === "SIGNED_IN") {
+          refreshTenants().catch(console.error)
+        }
+      }
+    )
+
+    return () => {
+      authListener.subscription.unsubscribe()
+    }
   }, [refreshTenants])
 
   const value = React.useMemo<TenantContextValue>(
