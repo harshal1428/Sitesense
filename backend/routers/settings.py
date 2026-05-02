@@ -32,13 +32,14 @@ async def save_key(
     if body.provider not in valid_providers:
         raise HTTPException(status_code=400, detail="Invalid provider")
     
-    if len(body.api_key) < 10:
+    api_key = body.api_key.strip()
+    if len(api_key) < 10:
         raise HTTPException(status_code=400, detail="Invalid API key")
     
     result = await save_api_key(
         current_user["user_id"],
         body.provider,
-        body.api_key
+        api_key
     )
     if not result:
         raise HTTPException(status_code=500, detail="Failed to save API key")

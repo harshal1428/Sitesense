@@ -52,18 +52,21 @@ async def get_provider_api_key(provider: str, user_id: str) -> str:
     1. User-specific database key (if user_id is a UUID)
     2. Global environment variables (if user_id is 'system' or no DB key)
     """
-    key = None
-    
-    # Map provider to setting name
-    setting_map = {
-        LLMProvider.GEMINI: "GEMINI_API_KEY",
-        LLMProvider.CLAUDE: "ANTHROPIC_API_KEY",
-        LLMProvider.OPENROUTER: "OPENROUTER_API_KEY"
-    }
-    
-    setting_name = setting_map.get(provider)
-    if setting_name:
-        key = getattr(settings, setting_name, None)
+    # 1. Check database if user_id is provided
+    if user_id and user_id != "system":
+        key = await get_api_key(user_id, provider)
+
+    # 2. Map provider to setting name and check environment variables if no db key
+    if not key:
+        setting_map = {
+            LLMProvider.GEMINI: "GEMINI_API_KEY",
+            LLMProvider.CLAUDE: "ANTHROPIC_API_KEY",
+            LLMProvider.OPENROUTER: "OPENROUTER_API_KEY"
+        }
+        
+        setting_name = setting_map.get(provider)
+        if setting_name:
+            key = getattr(settings, setting_name, None)
 
     if not key:
         raise ValueError(
