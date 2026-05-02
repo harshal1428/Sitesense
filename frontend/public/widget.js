@@ -276,15 +276,17 @@
     }
 
     /* ---------- Mobile fullscreen ---------- */
-    @media (max-width: 420px) {
+    @media (max-width: 768px) {
       .ss-window {
-        width: 100vw; height: 100vh;
+        width: 100%; height: 100%;
         bottom: 0; left: 0; right: 0; top: 0;
         border-radius: 0;
+        z-index: 2147483647;
       }
       .ss-window.open { border-radius: 0; }
       .ss-header { border-radius: 0; }
       .ss-input-area, .ss-footer { border-radius: 0; }
+      .ss-bubble { bottom: 16px; right: 16px; }
     }
   `;
 

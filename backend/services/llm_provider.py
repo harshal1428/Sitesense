@@ -278,7 +278,21 @@ async def _call_gemini(
         if not response or not response.text:
             raise ValueError("Gemini returned an empty response")
             
-        result = json.loads(response.text)
+        text = response.text.strip()
+        if text.startswith("```"):
+            lines = text.split("\n")
+            if len(lines) > 1 and lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            text = "\n".join(lines).strip()
+            
+        try:
+            result = json.loads(text)
+        except json.JSONDecodeError:
+            log.error(f"Failed to parse Gemini response: {text}")
+            raise ValueError("Gemini did not return valid JSON")
+            
         tokens = (response.usage_metadata.prompt_token_count + 
                  response.usage_metadata.candidates_token_count)
         return result, tokens
