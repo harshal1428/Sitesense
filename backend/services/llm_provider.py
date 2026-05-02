@@ -100,7 +100,7 @@ async def generate_structured_response(
         log.warning(f"Primary provider {provider} failed: {str(e)}. Attempting first fallback...")
         
         # 2. Try Secondary Provider
-        # Prefer Gemini first (most likely to have a working key), then Claude, then OpenAI
+        # Prefer Gemini first (most likely to have a working key), then Claude, then OpenRouter
         fallback_order = [LLMProvider.GEMINI, LLMProvider.CLAUDE, LLMProvider.OPENROUTER]
         if provider in fallback_order:
             fallback_order.remove(provider)
