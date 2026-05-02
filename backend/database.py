@@ -408,20 +408,30 @@ async def get_leads_by_tenant(tenant_id: str) -> list[dict]:
 # API Key Operations (NEW)
 # ---------------------------------------------------------------------------
 
+DB_PROVIDER_MAP = {
+    "claude": "anthropic",
+    "openrouter": "openai"
+}
+REVERSE_PROVIDER_MAP = {
+    "anthropic": "claude",
+    "openai": "openrouter"
+}
+
 async def save_api_key(user_id: str, provider: str, api_key: str) -> dict:
     """Store encrypted API key for a user and provider."""
     client = await get_admin_client()
     
+    db_provider = DB_PROVIDER_MAP.get(provider, provider)
     preview = "****" + api_key[-4:] if len(api_key) > 4 else api_key
     encrypted = _encrypt_key(api_key)
     
     # We use manual delete-then-insert since schema doesn't have unique constraint for upsert
     try:
-        await client.table("user_api_keys").delete().eq("user_id", user_id).eq("provider", provider).execute()
+        await client.table("user_api_keys").delete().eq("user_id", user_id).eq("provider", db_provider).execute()
         
         data = {
             "user_id": user_id,
-            "provider": provider,
+            "provider": db_provider,
             "key_preview": preview,
             "key_encrypted": encrypted,
             "is_active": True,
@@ -435,8 +445,9 @@ async def save_api_key(user_id: str, provider: str, api_key: str) -> dict:
 async def get_api_key(user_id: str, provider: str) -> str | None:
     """Fetch and decrypt API key."""
     client = await get_admin_client()
+    db_provider = DB_PROVIDER_MAP.get(provider, provider)
     try:
-        result = await client.table("user_api_keys").select("key_encrypted").eq("user_id", user_id).eq("provider", provider).eq("is_active", True).execute()
+        result = await client.table("user_api_keys").select("key_encrypted").eq("user_id", user_id).eq("provider", db_provider).eq("is_active", True).execute()
         if result.data:
             return _decrypt_key(result.data[0]["key_encrypted"])
         return None
@@ -447,8 +458,9 @@ async def get_api_key(user_id: str, provider: str) -> str | None:
 async def delete_api_key(user_id: str, provider: str) -> bool:
     """Delete API key for a provider."""
     client = await get_admin_client()
+    db_provider = DB_PROVIDER_MAP.get(provider, provider)
     try:
-        result = await client.table("user_api_keys").delete().eq("user_id", user_id).eq("provider", provider).execute()
+        result = await client.table("user_api_keys").delete().eq("user_id", user_id).eq("provider", db_provider).execute()
         return len(result.data) > 0
     except Exception as e:
         logger.error(f"Error deleting API key: {e}")
@@ -459,6 +471,9 @@ async def get_user_providers(user_id: str) -> list[dict]:
     client = await get_admin_client()
     try:
         result = await client.table("user_api_keys").select("provider, key_preview, is_active").eq("user_id", user_id).execute()
+        if result.data:
+            for row in result.data:
+                row["provider"] = REVERSE_PROVIDER_MAP.get(row["provider"], row["provider"])
         return result.data or []
     except Exception as e:
         logger.error(f"Error fetching user providers: {e}")
