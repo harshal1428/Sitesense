@@ -27,7 +27,7 @@ async def save_key(
     """Save encrypted API key for a provider"""
     valid_providers = [
         "anthropic", "gemini", 
-        "voyage", "openai"
+        "voyage", "openrouter", "claude"
     ]
     if body.provider not in valid_providers:
         raise HTTPException(status_code=400, detail="Invalid provider")

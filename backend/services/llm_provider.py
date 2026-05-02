@@ -22,7 +22,7 @@ GEMINI_VARIANTS = [
 class LLMProvider(str, Enum):
     CLAUDE = "claude"
     GEMINI = "gemini"
-    OPENAI = "openai"
+    OPENROUTER = "openrouter"
 
 AVAILABLE_MODELS = {
     "claude": [
@@ -35,9 +35,10 @@ AVAILABLE_MODELS = {
         "gemini-2.5-flash",
         "gemini-2.5-pro",
     ],
-    "openai": [
-        "gpt-4o",
-        "gpt-4o-mini"
+    "openrouter": [
+        "openai/gpt-4o",
+        "openai/gpt-4o-mini",
+        "meta-llama/llama-3-8b-instruct"
     ]
 }
 
@@ -57,7 +58,7 @@ async def get_provider_api_key(provider: str, user_id: str) -> str:
     setting_map = {
         LLMProvider.GEMINI: "GEMINI_API_KEY",
         LLMProvider.CLAUDE: "ANTHROPIC_API_KEY",
-        LLMProvider.OPENAI: "OPENAI_API_KEY"
+        LLMProvider.OPENROUTER: "OPENROUTER_API_KEY"
     }
     
     setting_name = setting_map.get(provider)
@@ -95,7 +96,7 @@ async def generate_structured_response(
         
         # 2. Try Secondary Provider
         # Prefer Gemini first (most likely to have a working key), then Claude, then OpenAI
-        fallback_order = [LLMProvider.GEMINI, LLMProvider.CLAUDE, LLMProvider.OPENAI]
+        fallback_order = [LLMProvider.GEMINI, LLMProvider.CLAUDE, LLMProvider.OPENROUTER]
         if provider in fallback_order:
             fallback_order.remove(provider)
             
@@ -120,14 +121,14 @@ async def _call_provider(provider, model, system, user, key, schema, context):
         return await _call_claude(system, user, key, model, schema, context)
     elif provider == LLMProvider.GEMINI:
         return await _call_gemini(system, user, key, model, schema, context)
-    elif provider == LLMProvider.OPENAI:
-        return await _call_openai(system, user, key, model, schema, context)
+    elif provider == LLMProvider.OPENROUTER:
+        return await _call_openrouter(system, user, key, model, schema, context)
     else:
         raise ValueError(f"Unknown provider: {provider}")
 
-async def _call_openai(system, user, key, model, schema, context):
+async def _call_openrouter(system, user, key, model, schema, context):
     from openai import AsyncOpenAI
-    client = AsyncOpenAI(api_key=key)
+    client = AsyncOpenAI(api_key=key, base_url="https://openrouter.ai/api/v1")
     
     full_sys = f"{system}\n\nCONTEXT:\n{context}"
     

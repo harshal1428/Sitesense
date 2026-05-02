@@ -87,9 +87,9 @@ async def lifespan(app: FastAPI):
         logger.info(f"Global Embedding provider: {provider}")
 
     # 4. Verify/Validate LLM provider
-    has_llm = any([settings.ANTHROPIC_API_KEY, settings.GEMINI_API_KEY])
+    has_llm = any([settings.ANTHROPIC_API_KEY, settings.GEMINI_API_KEY, settings.OPENROUTER_API_KEY])
     if not has_llm:
-        logger.warning("WARNING: No global LLM provider configured! Set ANTHROPIC_API_KEY or GEMINI_API_KEY in .env")
+        logger.warning("WARNING: No global LLM provider configured! Set ANTHROPIC_API_KEY, GEMINI_API_KEY, or OPENROUTER_API_KEY in .env")
     else:
         from services.llm_provider import validate_provider, LLMProvider
         try:
