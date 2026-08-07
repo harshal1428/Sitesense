@@ -38,13 +38,31 @@ async def get_admin_client() -> AsyncClient:
 
 async def init_db() -> None:
     """Verifies connection to Supabase."""
+    # 1. Validate URL configuration before attempting network request
+    if not settings.SUPABASE_URL or "your_supabase_url" in settings.SUPABASE_URL:
+        raise ValueError(
+            "Invalid SUPABASE_URL detected! Please ensure you have set your real "
+            "Supabase Project URL in your environment variables (e.g., on Render or in your .env file)."
+        )
+    if not settings.SUPABASE_URL.startswith("http"):
+        raise ValueError(
+            f"Invalid SUPABASE_URL format: '{settings.SUPABASE_URL}'. "
+            "The URL must include the 'https://' prefix."
+        )
+
+    # 2. Attempt connection
     client = await get_admin_client()
     try:
         # Just a simple ping to verify service role key & URL
         await client.table("tenants").select("id").limit(1).execute()
     except Exception as e:
-        logger.error(f"Failed to connect to Supabase: {e}")
-        raise RuntimeError(f"Database connection failed: {e}")
+        logger.error(f"Failed to connect to Supabase at {settings.SUPABASE_URL}: {e}")
+        # Make the exception incredibly explicit for the user logs
+        raise RuntimeError(
+            f"Database connection failed. Please double-check your SUPABASE_URL "
+            f"and SUPABASE_SERVICE_KEY in your environment variables. "
+            f"Underlying error: {e}"
+        )
 
 # ---------------------------------------------------------------------------
 # Helpers
