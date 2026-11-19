@@ -9,7 +9,7 @@
 
 ## What is SiteSense AI?
 
-SiteSense AI lets you create AI chatbots trained on your own websites and documents. Embed on any website with 2 lines of HTML. Each bot answers ONLY from your content — never hallucinates.
+SiteSense AI lets you create AI chatbots trained on your own websites and documents. Embbed on any website with 2 lines of HTML (Code snippet). Each bot answers ONLY from your content — never hallucinates.
 
 ## ✨ Features
 
